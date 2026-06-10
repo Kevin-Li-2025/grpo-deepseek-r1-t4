@@ -3,15 +3,15 @@ import json
 import subprocess
 
 def create_kaggle_notebook():
-    scratch_dir = "/Users/yinxiaogou/.gemini/antigravity/scratch"
-    trainer_file = os.path.join(scratch_dir, "grpo_trainer.py")
+    # Dynamically find the script's directory to be fully self-contained
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    trainer_file = os.path.join(current_dir, "grpo_trainer.py")
     
     # Read training script
     with open(trainer_file, "r") as f:
         code_content = f.read()
 
     # Define Kaggle Notebook structure
-    # We remove vllm installation to ensure bulletproof stability and speed up setup.
     notebook = {
         "cells": [
             {
@@ -66,7 +66,7 @@ def create_kaggle_notebook():
     }
 
     # Write notebook file
-    notebook_path = os.path.join(scratch_dir, "grpo_notebook.ipynb")
+    notebook_path = os.path.join(current_dir, "grpo_notebook.ipynb")
     with open(notebook_path, "w") as f:
         json.dump(notebook, f, indent=2)
     print(f"Created notebook at {notebook_path}")
@@ -88,7 +88,7 @@ def create_kaggle_notebook():
         "model_sources": []
     }
     
-    meta_path = os.path.join(scratch_dir, "kernel-metadata.json")
+    meta_path = os.path.join(current_dir, "kernel-metadata.json")
     with open(meta_path, "w") as f:
         json.dump(meta, f, indent=2)
     print(f"Created metadata at {meta_path}")
@@ -97,7 +97,7 @@ def create_kaggle_notebook():
     print("Pushing notebook to Kaggle with T4 GPU...")
     try:
         res = subprocess.run(
-            ["kaggle", "kernels", "push", "-p", scratch_dir, "--accelerator", "NvidiaTeslaT4"],
+            ["kaggle", "kernels", "push", "-p", current_dir, "--accelerator", "NvidiaTeslaT4"],
             capture_output=True,
             text=True,
             check=True

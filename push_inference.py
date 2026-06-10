@@ -3,8 +3,9 @@ import json
 import subprocess
 
 def create_inference_notebook():
-    scratch_dir = "/Users/yinxiaogou/.gemini/antigravity/scratch"
-    test_file = os.path.join(scratch_dir, "inference_test.py")
+    # Dynamically find the script's directory to be fully self-contained
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    test_file = os.path.join(current_dir, "inference_test.py")
     
     # Read test script
     with open(test_file, "r") as f:
@@ -52,7 +53,7 @@ def create_inference_notebook():
     }
 
     # Write notebook file
-    notebook_path = os.path.join(scratch_dir, "inference_notebook.ipynb")
+    notebook_path = os.path.join(current_dir, "inference_notebook.ipynb")
     with open(notebook_path, "w") as f:
         json.dump(notebook, f, indent=2)
     print(f"Created notebook at {notebook_path}")
@@ -74,7 +75,7 @@ def create_inference_notebook():
         "model_sources": []
     }
     
-    meta_path = os.path.join(scratch_dir, "kernel-metadata.json")
+    meta_path = os.path.join(current_dir, "kernel-metadata.json")
     with open(meta_path, "w") as f:
         json.dump(meta, f, indent=2)
     print(f"Created metadata at {meta_path}")
@@ -83,7 +84,7 @@ def create_inference_notebook():
     print("Pushing inference notebook to Kaggle with T4 GPU...")
     try:
         res = subprocess.run(
-            ["kaggle", "kernels", "push", "-p", scratch_dir, "--accelerator", "NvidiaTeslaT4"],
+            ["kaggle", "kernels", "push", "-p", current_dir, "--accelerator", "NvidiaTeslaT4"],
             capture_output=True,
             text=True,
             check=True

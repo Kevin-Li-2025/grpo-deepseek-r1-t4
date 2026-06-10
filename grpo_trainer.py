@@ -1,5 +1,6 @@
 import os
 import re
+import math
 import torch
 from unsloth import FastLanguageModel
 
@@ -53,7 +54,6 @@ dataset = load_dataset("openai/gsm8k", "main", split="train")
 dataset = preprocess_dataset(dataset)
 
 # Helper to extract raw text content from trainer completions
-# In modern trl, completions are passed as lists of chat structures (e.g. [[{'role': 'assistant', 'content': '...'}]]
 def extract_text_from_completion(content):
     if isinstance(content, list):
         if len(content) > 0 and isinstance(content[0], dict) and "content" in content[0]:
@@ -96,19 +96,51 @@ def correctness_reward_func(completions, answer, **kwargs):
             rewards.append(0.0)
     return rewards
 
-# Reward 3: Strict Length Penalty (prevents Thought-Length Hacking)
-def length_penalty_func(completions, **kwargs):
+# Reward 3: Cosine Length Penalty (Smooth decay to mitigate Thought-Length Hacking)
+def cosine_length_penalty_func(completions, **kwargs):
     rewards = []
     for content in completions:
         text = extract_text_from_completion(content)
-        # Penalize if thought reasoning goes way too long
         char_len = len(text)
-        if char_len > 1500:
-            rewards.append(-1.0)
-        elif char_len > 800:
-            rewards.append(-0.5)
-        else:
+        # Optimal length is under 600 characters.
+        # Smoothly penalize with cosine curve between 600 and 1500 characters.
+        if char_len <= 600:
             rewards.append(0.0)
+        elif char_len >= 1500:
+            rewards.append(-1.0)
+        else:
+            normalized = (char_len - 600) / 900.0
+            penalty = -0.5 * (1.0 - math.cos(normalized * math.pi))
+            rewards.append(penalty)
+    return rewards
+
+# Reward 4: Intermediate Numeric Overlap Reward
+# Rewards the model for computing intermediate numbers that match the ground truth steps.
+def intermediate_overlap_reward_func(completions, answer, **kwargs):
+    rewards = []
+    for content, raw_ans in zip(completions, answer):
+        text = extract_text_from_completion(content)
+        
+        # Extract numbers from ground truth reasoning steps (excluding the final answer after ####)
+        gt_body = raw_ans.split("####")[0]
+        gt_numbers = set(re.findall(r"\d+", gt_body))
+        if not gt_numbers:
+            rewards.append(0.0)
+            continue
+            
+        # Extract numbers from generated reasoning
+        pred_match = re.search(r"<reasoning>(.*?)</reasoning>", text, re.DOTALL)
+        if not pred_match:
+            rewards.append(0.0)
+            continue
+        pred_numbers = set(re.findall(r"\d+", pred_match.group(1)))
+        
+        # Calculate overlap
+        overlap = gt_numbers.intersection(pred_numbers)
+        overlap_ratio = len(overlap) / len(gt_numbers)
+        
+        # Award up to 0.5 points for partial steps alignment
+        rewards.append(overlap_ratio * 0.5)
     return rewards
 
 # 3. Configure training arguments optimized for T4 GPUs
@@ -133,16 +165,21 @@ training_args = GRPOConfig(
     use_vllm = False # Bypasses vLLM to ensure compatibility and stability
 )
 
-# 4. Initialize and run trainer
+# 4. Initialize and run trainer with our 4 custom reward functions
 trainer = GRPOTrainer(
     model = model,
     processing_class = tokenizer,
-    reward_funcs = [format_reward_func, correctness_reward_func, length_penalty_func],
+    reward_funcs = [
+        format_reward_func, 
+        correctness_reward_func, 
+        cosine_length_penalty_func,
+        intermediate_overlap_reward_func
+    ],
     args = training_args,
     train_dataset = dataset,
 )
 
-print("Starting GRPO training pipeline on Kaggle...")
+print("Starting upgraded GRPO training pipeline on Kaggle...")
 trainer.train()
 
 # 5. Save the trained LoRA adapter
