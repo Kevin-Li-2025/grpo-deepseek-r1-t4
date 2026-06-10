@@ -3,15 +3,14 @@ import json
 import subprocess
 
 def create_kaggle_notebook():
-    # Dynamically find the script's directory to be fully self-contained
     current_dir = os.path.dirname(os.path.abspath(__file__))
     trainer_file = os.path.join(current_dir, "grpo_trainer.py")
     
-    # Read training script
     with open(trainer_file, "r") as f:
         code_content = f.read()
 
     # Define Kaggle Notebook structure
+    # Now includes automatic inline plotting from metrics.csv at the end of execution
     notebook = {
         "cells": [
             {
@@ -24,7 +23,7 @@ def create_kaggle_notebook():
                     "!pip install --upgrade pip\n",
                     "!pip install \"unsloth[colab-new] @ git+https://github.com/unslothai/unsloth.git\"\n",
                     "!pip install --no-deps trl peft bitsandbytes transformers\n",
-                    "# Re-upgrade numpy to match pre-loaded version 2.4.6 to bypass unsloth_zoo checks\n",
+                    "# Re-upgrade numpy to match pre-loaded version 2.4.6\n",
                     "!pip install numpy==2.4.6\n"
                 ]
             },
@@ -48,6 +47,53 @@ def create_kaggle_notebook():
                 "outputs": [],
                 "source": [
                     code_content
+                ]
+            },
+            {
+                "cell_type": "code",
+                "execution_count": None,
+                "metadata": {},
+                "outputs": [],
+                "source": [
+                    "# Generate and display plots from training logs\n",
+                    "import os\n",
+                    "import pandas as pd\n",
+                    "import matplotlib.pyplot as plt\n",
+                    "\n",
+                    "csv_path = '/kaggle/working/metrics.csv'\n",
+                    "print('Checking for metrics file:', csv_path)\n",
+                    "if os.path.exists(csv_path):\n",
+                    "    df = pd.read_csv(csv_path)\n",
+                    "    df.columns = [c.strip() for c in df.columns]\n",
+                    "    print('Loaded training metrics. Columns found:', list(df.columns))\n",
+                    "    \n",
+                    "    # Plot Loss Curve\n",
+                    "    if 'loss' in df.columns:\n",
+                    "        plt.figure(figsize=(10, 4))\n",
+                    "        plt.plot(df['step'], df['loss'], label='Loss', color='royalblue', linewidth=1.5)\n",
+                    "        plt.title('GRPO Loss Curve')\n",
+                    "        plt.xlabel('Step')\n",
+                    "        plt.ylabel('Loss')\n",
+                    "        plt.grid(True, linestyle='--', alpha=0.6)\n",
+                    "        plt.legend()\n",
+                    "        plt.savefig('/kaggle/working/loss_curve.png', dpi=150, bbox_inches='tight')\n",
+                    "        plt.show()\n",
+                    "        \n",
+                    "    # Plot Rewards Curves\n",
+                    "    reward_cols = [c for c in df.columns if 'reward' in c.lower()]\n",
+                    "    if reward_cols:\n",
+                    "        plt.figure(figsize=(10, 5))\n",
+                    "        for col in reward_cols:\n",
+                    "            plt.plot(df['step'], df[col], label=col, linewidth=1.5)\n",
+                    "        plt.title('GRPO Rewards Curve')\n",
+                    "        plt.xlabel('Step')\n",
+                    "        plt.ylabel('Reward Value')\n",
+                    "        plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')\n",
+                    "        plt.grid(True, linestyle='--', alpha=0.6)\n",
+                    "        plt.savefig('/kaggle/working/rewards_curve.png', dpi=150, bbox_inches='tight')\n",
+                    "        plt.show()\n",
+                    "else:\n",
+                    "    print('Error: metrics.csv not found!')\n"
                 ]
             }
         ],
