@@ -70,7 +70,7 @@ def extract_text_from_completion(content):
         return content
     return str(content)
 
-# Reward 1: Formatting Reward
+# Reward 1: Formatting Reward (Strict)
 def format_reward_func(completions, **kwargs):
     rewards = []
     pattern = r"^<reasoning>\n.*?\n</reasoning>\n<answer>\n.*?\n</answer>$"
@@ -78,6 +78,23 @@ def format_reward_func(completions, **kwargs):
         text = extract_text_from_completion(content)
         match = re.search(pattern, text, re.DOTALL)
         rewards.append(1.0 if match else 0.0)
+    return rewards
+
+# Reward 1b: Soft XML Tag Count Reward (helps with cold start)
+def xmlcount_reward_func(completions, **kwargs):
+    rewards = []
+    for content in completions:
+        text = extract_text_from_completion(content)
+        reward = 0.0
+        if text.count("<reasoning>") == 1:
+            reward += 0.25
+        if text.count("</reasoning>") == 1:
+            reward += 0.25
+        if text.count("<answer>") == 1:
+            reward += 0.25
+        if text.count("</answer>") == 1:
+            reward += 0.25
+        rewards.append(reward)
     return rewards
 
 # Helper to extract ground truth number from GSM8K answer
@@ -196,6 +213,7 @@ trainer = GRPOTrainer(
     processing_class = tokenizer,
     reward_funcs = [
         format_reward_func, 
+        xmlcount_reward_func,
         correctness_reward_func, 
         cosine_length_penalty_func,
         intermediate_overlap_reward_func
