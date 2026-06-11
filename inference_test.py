@@ -123,7 +123,7 @@ def main():
     print("Cleared GPU memory for fine-tuned model evaluation.")
 
     # --- PART 2: Evaluate Fine-Tuned Model ---
-    src_model_path = "/kaggle/input/notebooks/kevin250304/grpo-deepseek-r1-t4/grpo_r1_adapter"
+    src_model_path = "/kaggle/input/notebooks/kevinli2005/grpo-deepseek-r1-t4/grpo_r1_adapter"
     dest_model_path = "/kaggle/working/my_model"
 
     print("\n======================================")

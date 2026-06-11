@@ -60,7 +60,7 @@ def create_inference_notebook():
 
     # Write metadata file referencing the previous kernel's output
     meta = {
-        "id": "kevin250304/grpo-inference-test",
+        "id": "kevinli2005/grpo-inference-test",
         "title": "GRPO Inference Test",
         "code_file": "inference_notebook.ipynb",
         "language": "python",
@@ -71,7 +71,7 @@ def create_inference_notebook():
         "enable_internet": "true",
         "dataset_sources": [],
         "competition_sources": [],
-        "kernel_sources": ["kevin250304/grpo-deepseek-r1-t4"],
+        "kernel_sources": ["kevinli2005/grpo-deepseek-r1-t4"],
         "model_sources": []
     }
     

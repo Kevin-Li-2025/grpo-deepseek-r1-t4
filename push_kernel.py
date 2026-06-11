@@ -119,7 +119,7 @@ def create_kaggle_notebook():
 
     # Write metadata file
     meta = {
-        "id": "kevin250304/grpo-deepseek-r1-t4",
+        "id": "kevinli2005/grpo-deepseek-r1-t4",
         "title": "GRPO DeepSeek R1 T4",
         "code_file": "grpo_notebook.ipynb",
         "language": "python",
